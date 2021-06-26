@@ -87,7 +87,7 @@ yearly_dwnld %>%
   ) %>%
   e_charts(Year) %>%
   e_bar(serie = count) %>% 
-  e_title(text = "CRAN Packages Yearly Download Statistics", 
+  e_title(text = "CRAN Packages Yearly Downloads", 
           subtext = "Frequency of Downloads", 
           sublink = "#",
           left = "left", top = 4
@@ -124,10 +124,10 @@ d %>%
   e_cloud(word, freq, color, shape = "circle")
 ```
 
-Row {.tabset .tabset-fade}
+Row {data-height=700 .tabset .tabset-fade}
 -----------------------------------------------------------------------
 
-### Top 100 most depended-upon packages (based on Imports/Suggests fields in package metadata)
+### Top 100 most depended-upon packages | <small>Based on- Depends,Imports,LinkingTo,Suggests
 ```{r}
 pkg_depend_df %>% 
   reactable(
