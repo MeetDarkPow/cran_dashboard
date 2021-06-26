@@ -1,0 +1,295 @@
+---
+title: "CRAN Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+    self_contained: false
+    includes:
+      after_body: "afterInit.html"
+      #beforeInit: "afterInit.html"
+      
+    css: css/custom.css
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(rmarkdown)
+library(reactable)
+library(htmltools)
+library(tools)
+library(stringr)
+library(jsonlite)
+library(rvest)
+library(tidyr)
+library(ctv)
+library(dplyr)
+library(tm)
+library(lubridate)
+library(echarts4r)
+source("cran_global.R")
+```
+
+Sidebar {.sidebar data-width=200}
+=====================================
+
+<div class="sidebar-pages">
+<a class="navlink" href="#home" data-toggle="tab" aria-expanded="false"><i class="fa fa-home"></i> CRAN Statistics</a>
+</div>
+
+
+CRAN Statistics
+=====================================
+
+Row
+-------------------------------------
+
+### Total CRAN packages
+
+```{r}
+
+valueBox(total_pkgs, icon = "fa-project-diagram", color = "#1F51FF")
+
+```
+
+### Total count of authors
+
+```{r}
+
+valueBox(total_authors, icon = "fa-user-edit", color = "#1F51FF")
+
+```
+
+### Total Package Downloads 
+
+```{r}
+valueBox(total_dwnld, icon = "fa-download", color = "#1F51FF")
+```
+
+### Number of CRAN Task Views
+
+```{r}
+valueBox(total_cran_taskviews, icon = "fa-tasks", color = "#1F51FF")
+```
+
+Row {data-height=500}
+-----------------------------------------------------------------------
+
+### Yearly chart of total downloads
+
+```{r}
+mycolor <- c("#1F51FF","#003636","#a9a9a9", "#91c8c8")
+
+rownames(yearly_dwnld) <- yearly_dwnld$year
+yearly_dwnld %>% 
+  mutate(
+    Year = row.names(.)
+  ) %>%
+  e_charts(Year) %>%
+  e_bar(serie = count) %>% 
+  e_title(text = "CRAN Packages Yearly Download Statistics", 
+          subtext = "Frequency of Downloads", 
+          sublink = "#",
+          left = "left", top = 4
+  ) %>%
+  e_y_axis(
+    splitArea = list(show = TRUE),
+    axisPointer = list(      show = FALSE, 
+                             lineStyle = list(
+                               color = "#999999",
+                               width = 0.75,
+                               type = "dotted"
+                             ))
+  ) %>%
+  e_x_axis(splitArea = list(show = TRUE),
+           splitLine = list(show = TRUE),
+           axisLabel= list(rotate = 30,interval = 0)) %>%
+  e_toolbox_feature(feature = "magicType",
+                    type = list("area", "line", "bar")) %>%
+  e_toolbox_feature("restore") %>%
+  e_toolbox_feature(feature = "reset") %>%
+  e_toolbox_feature("dataView") %>%
+  e_toolbox_feature("saveAsImage") %>%
+  e_animation(duration = 1000) %>%
+  e_tooltip(trigger = "axis") %>% e_color(mycolor)
+```
+
+### Word Cloud of Package Keywords | <small> CRAN Packages </small>
+
+```{r}
+d %>% 
+  head(100) %>%
+  e_color_range(freq, color, colors = "#1F51FF") %>% 
+  e_charts() %>% 
+  e_cloud(word, freq, color, shape = "circle")
+```
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### Top 100 most depended-upon packages (based on Imports/Suggests fields in package metadata)
+```{r}
+pkg_depend_df %>% 
+  reactable(
+    .,
+    pagination = TRUE,
+    showPageSizeOptions = TRUE,
+    highlight = TRUE,
+    defaultSorted = "Count",
+    defaultColDef = colDef(headerClass = "header", align = "left"),
+    columns = list(
+      Package = colDef(
+        name = "Package Name",
+        width = 200,
+        defaultSortOrder = "desc",
+        filterable = TRUE,
+        cell = function(value) {
+          url <- paste0("https://cran.r-project.org/web/packages/",value,"/index.html")
+          tags$a(href = url, target = "_blank", value)
+        }
+      ),
+      Count = colDef(
+        name = "Depend Frequency",
+        defaultSortOrder = "desc",
+        cell = function(value) {
+          width <- paste0(value * 100 / sum(pkg_depend_df$Count), "%")
+          value <- format(value, big.mark = ",")
+          value <- format(value, width = 9, justify = "right")
+          bar <- div(
+            class = "bar-chart",
+            style = list(marginRight = "6px"),
+            div(class = "bar", style = list(width = width, backgroundColor = "#1F51FF"))
+          )
+          div(class = "bar-cell", span(class = "number", value), bar)
+        }
+      )),
+    compact = TRUE,
+    bordered = TRUE,
+    class = "categories-tbl"
+  )
+```
+
+### Top 50 Keywords | <small> CRAN Packages </small>
+
+```{r}
+keyword_df %>%
+  reactable(
+    .,
+    pagination = TRUE,
+    showPageSizeOptions = TRUE,
+    highlight = TRUE,
+    defaultSorted = "freq",
+    defaultColDef = colDef(headerClass = "header", align = "left"),
+    columns = list(
+      word = colDef(
+        name = "Word",
+        width = 200,
+        defaultSortOrder = "desc",
+        filterable = TRUE,
+      ),
+      freq = colDef(
+        name = "Word Count",
+        defaultSortOrder = "desc",
+        cell = function(value) {
+          width <- paste0(value * 100 / sum(keyword_df$freq), "%")
+          value <- format(value, big.mark = ",")
+          value <- format(value, width = 9, justify = "right")
+          bar <- div(
+            class = "bar-chart",
+            style = list(marginRight = "6px"),
+            div(class = "bar", style = list(width = width, backgroundColor = "#1F51FF"))
+          )
+          div(class = "bar-cell", span(class = "number", value), bar)
+        }
+      )),
+    compact = TRUE,
+    bordered = TRUE,
+    class = "categories-tbl"
+  )
+```
+
+Row {data-height=500}
+-----------------------------------------------------------------------
+
+### Licenses Types
+
+```{r}
+license_df %>%
+  reactable(
+    .,
+    pagination = TRUE,
+    showPageSizeOptions = TRUE,
+    highlight = TRUE,
+    defaultSorted = "Frequency",
+    defaultColDef = colDef(headerClass = "header", align = "left"),
+    columns = list(
+      License = colDef(
+        name = "License Name",
+        width = 200,
+        defaultSortOrder = "desc",
+        filterable = TRUE,
+      ),
+      Frequency = colDef(
+        name = "Frequency of Packages",
+        defaultSortOrder = "desc",
+        cell = function(value) {
+          width <- paste0(value * 100 / sum(license_df$Frequency), "%")
+          value <- format(value, big.mark = ",")
+          value <- format(value, width = 9, justify = "right")
+          bar <- div(
+            class = "bar-chart",
+            style = list(marginRight = "6px"),
+            div(class = "bar", style = list(width = width, backgroundColor = "#1F51FF"))
+          )
+          div(class = "bar-cell", span(class = "number", value), bar)
+        }
+      )),
+    compact = TRUE,
+    bordered = TRUE,
+    class = "categories-tbl"
+  )
+```
+
+### CRAN Task Views
+
+```{r}
+taskview_df %>% 
+  reactable(
+    .,
+    pagination = TRUE,
+    showPageSizeOptions = TRUE,
+    highlight = TRUE,
+    defaultSorted = "NumberOfPackages",
+    defaultColDef = colDef(headerClass = "header", align = "left"),
+    columns = list(
+      TaskViews = colDef(
+        name = "Topic Name",
+        width = 200,
+        defaultSortOrder = "desc",
+        filterable = TRUE,
+        cell = function(value) {
+          url <- paste0("https://cran.r-project.org/web/views/",value,".html")
+          tags$a(href = url, target = "_blank", value)
+        }
+      ),
+      NumberOfPackages = colDef(
+        name = "Number of Packages",
+        defaultSortOrder = "desc",
+        cell = function(value) {
+          width <- paste0(value * 100 / sum(taskview_df$NumberOfPackages), "%")
+          value <- format(value, big.mark = ",")
+          value <- format(value, width = 9, justify = "right")
+          bar <- div(
+            class = "bar-chart",
+            style = list(marginRight = "6px"),
+            div(class = "bar", style = list(width = width, backgroundColor = "#1F51FF"))
+          )
+          div(class = "bar-cell", span(class = "number", value), bar)
+        }
+      )),
+    compact = TRUE,
+    bordered = TRUE,
+    class = "categories-tbl"
+  )
+```
+
