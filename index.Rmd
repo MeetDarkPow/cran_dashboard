@@ -22,6 +22,7 @@ library(stringr)
 library(jsonlite)
 library(rvest)
 library(tidyr)
+library(cranlogs)
 library(ctv)
 library(dplyr)
 library(tm)
@@ -124,49 +125,42 @@ d %>%
   e_cloud(word, freq, color, shape = "circle")
 ```
 
-Row {data-height=700 .tabset .tabset-fade}
+Row {data-height=500}
 -----------------------------------------------------------------------
 
-### Top 100 most depended-upon packages | <small>Based on- Depends,Imports,LinkingTo,Suggests
+### Most popular packages downloaded | <small> Last Month </small>
 ```{r}
-pkg_depend_df %>% 
-  reactable(
-    .,
-    pagination = TRUE,
-    showPageSizeOptions = TRUE,
-    highlight = TRUE,
-    defaultSorted = "Count",
-    defaultColDef = colDef(headerClass = "header", align = "left"),
-    columns = list(
-      Package = colDef(
-        name = "Package Name",
-        width = 200,
-        defaultSortOrder = "desc",
-        filterable = TRUE,
-        cell = function(value) {
-          url <- paste0("https://cran.r-project.org/web/packages/",value,"/index.html")
-          tags$a(href = url, target = "_blank", value)
-        }
-      ),
-      Count = colDef(
-        name = "Depend Frequency",
-        defaultSortOrder = "desc",
-        cell = function(value) {
-          width <- paste0(value * 100 / sum(pkg_depend_df$Count), "%")
-          value <- format(value, big.mark = ",")
-          value <- format(value, width = 9, justify = "right")
-          bar <- div(
-            class = "bar-chart",
-            style = list(marginRight = "6px"),
-            div(class = "bar", style = list(width = width, backgroundColor = "#1F51FF"))
-          )
-          div(class = "bar-cell", span(class = "number", value), bar)
-        }
-      )),
-    compact = TRUE,
-    bordered = TRUE,
-    class = "categories-tbl"
-  )
+mp_pkg_month <- cran_top_downloads(when = "last-month", count = 20)
+
+mycolor <- c("#1F51FF","#003636","#a9a9a9", "#91c8c8")
+mp_pkg_month <- mp_pkg_month %>%
+  arrange(count)
+mp_pkg_month %>%
+  e_charts(x = package) %>%
+  e_bar(count, legend = FALSE, name = "Download Count") %>% 
+  e_labels(position = "right") %>% 
+  e_title("Top 20 CRAN Package Downloads - Last Month", "Package") %>% 
+  e_y_axis(
+    splitArea = list(show = TRUE),
+    axisPointer = list(      show = FALSE, 
+                             lineStyle = list(
+                               color = "#999999",
+                               width = 0.75,
+                               type = "dotted"
+                             ))
+  ) %>%
+  e_x_axis(splitArea = list(show = TRUE),
+           splitLine = list(show = TRUE),
+           axisLabel= list(rotate = 30,interval = 0)) %>%
+  e_flip_coords() %>% 
+  e_toolbox_feature(feature = "magicType",
+                    type = list("area", "line", "bar")) %>%
+  e_toolbox_feature("restore") %>%
+  e_toolbox_feature(feature = "reset") %>%
+  e_toolbox_feature("dataView") %>%
+  e_toolbox_feature("saveAsImage") %>%
+  e_animation(duration = 1000) %>%
+  e_tooltip(trigger = "axis") %>% e_color(mycolor)
 ```
 
 ### Top 50 Keywords | <small> CRAN Packages </small>
